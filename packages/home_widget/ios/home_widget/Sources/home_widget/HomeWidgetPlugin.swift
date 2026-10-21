@@ -123,6 +123,31 @@ public class HomeWidgetPlugin: NSObject, FlutterPlugin, FlutterStreamHandler,
             code: "-1", message: "InvalidArguments saveWidgetData must be called with id and data",
             details: nil))
       }
+    } else if call.method == "saveWidgetDataBatch" {
+      guard let resolvedGroupId = resolvedAppGroupId(from: call) else {
+        result(notInitializedError)
+        return
+      }
+      guard let myArgs = callArguments(call),
+        let data = myArgs["data"] as? [String: Any]
+      else {
+        result(
+          FlutterError(
+            code: "-11", message: "InvalidArguments saveWidgetDataBatch must be called with data",
+            details: nil))
+        return
+      }
+      let preferences = UserDefaults.init(suiteName: resolvedGroupId)
+      for (id, value) in data {
+        if value is NSNull {
+          preferences?.removeObject(forKey: id)
+        } else if let binaryData = value as? FlutterStandardTypedData {
+          preferences?.setValue(Data(binaryData.data), forKey: id)
+        } else {
+          preferences?.setValue(value, forKey: id)
+        }
+      }
+      result(true)
     } else if call.method == "getWidgetData" {
       guard let resolvedGroupId = resolvedAppGroupId(from: call) else {
         result(notInitializedError)

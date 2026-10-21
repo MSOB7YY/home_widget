@@ -39,6 +39,8 @@ void main() {
       switch (methodCall.method) {
         case 'saveWidgetData':
           return true;
+        case 'saveWidgetDataBatch':
+          return true;
         case 'getWidgetData':
           return 'TestData';
         case 'updateWidget':
@@ -100,6 +102,35 @@ void main() {
 
     expect(arguments['id'], dataId);
     expect(arguments['appGroupId'], appGroupId);
+  });
+
+  group('saveWidgetDataBatch', () {
+    test('passes all entries in one call', () async {
+      const data = <String, Object?>{
+        'title': 'Test Value',
+        'count': 3,
+        'playing': true,
+        'removed': null,
+      };
+      expect(await HomeWidget.saveWidgetDataBatch(data), true);
+      final arguments = await passedArguments.future;
+
+      expect(arguments['data'], data);
+      expect((arguments as Map).containsKey('appGroupId'), false);
+    });
+
+    test('passes appGroupId when provided', () async {
+      const data = <String, Object?>{'title': 'Test Value'};
+      const appGroupId = 'group.test.per.call';
+      expect(
+        await HomeWidget.saveWidgetDataBatch(data, appGroupId: appGroupId),
+        true,
+      );
+      final arguments = await passedArguments.future;
+
+      expect(arguments['data'], data);
+      expect(arguments['appGroupId'], appGroupId);
+    });
   });
 
   group('saveWidgetData', () {

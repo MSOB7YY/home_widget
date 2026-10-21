@@ -51,25 +51,13 @@ class HomeWidgetPlugin :
           val id = call.argument<String>("id")
           val data = call.argument<Any>("data")
           val prefs = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
-          if (data != null) {
-            prefs.putBoolean("$doubleLongPrefix$id", data is Double)
-            when (data) {
-              is Boolean -> prefs.putBoolean(id, data)
-              is Float -> prefs.putFloat(id, data)
-              is String -> prefs.putString(id, data)
-              is Double -> prefs.putLong(id, java.lang.Double.doubleToRawLongBits(data))
-              is Int -> prefs.putInt(id, data)
-              is Long -> prefs.putLong(id, data)
-              else ->
-                  result.error(
-                      "-10",
-                      "Invalid Type ${data!!::class.java.simpleName}. Supported types are Boolean, Float, String, Double, Long",
-                      IllegalArgumentException(),
-                  )
-            }
-          } else {
-            prefs.remove(id)
-            prefs.remove("$doubleLongPrefix$id")
+          if (!putWidgetData(prefs, id, data)) {
+            result.error(
+                "-10",
+                "Invalid Type ${data!!::class.java.simpleName}. Supported types are Boolean, Float, String, Double, Long",
+                IllegalArgumentException(),
+            )
+            return
           }
           result.success(prefs.commit())
         } else {
@@ -79,6 +67,32 @@ class HomeWidgetPlugin :
               IllegalArgumentException(),
           )
         }
+      }
+      "saveWidgetDataBatch" -> {
+        val data = call.argument<Map<String, Any?>>("data")
+        if (data == null) {
+          result.error(
+              "-11",
+              "InvalidArguments saveWidgetDataBatch must be called with data",
+              IllegalArgumentException(),
+          )
+          return
+        }
+        val prefs = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+        for ((id, value) in data) {
+          if (!putWidgetData(prefs, id, value)) {
+            result.error(
+                "-10",
+                "Invalid Type ${value!!::class.java.simpleName} for $id. Supported types are Boolean, Float, String, Double, Long",
+                IllegalArgumentException(),
+            )
+            return
+          }
+        }
+        // apply() updates the in-memory values right away, Widgets in this process read them
+        // immediately while the disk write happens in the background.
+        prefs.apply()
+        result.success(true)
       }
       "getWidgetData" -> {
         if (call.hasArgument("id")) {
@@ -223,6 +237,30 @@ class HomeWidgetPlugin :
         result.notImplemented()
       }
     }
+  }
+
+  /**
+   * Writes [data] for [id] into [editor], a `null` [data] removes it.
+   *
+   * Returns `false` when [data] has an unsupported type.
+   */
+  private fun putWidgetData(editor: SharedPreferences.Editor, id: String?, data: Any?): Boolean {
+    if (data == null) {
+      editor.remove(id)
+      editor.remove("$doubleLongPrefix$id")
+      return true
+    }
+    when (data) {
+      is Boolean -> editor.putBoolean(id, data)
+      is Float -> editor.putFloat(id, data)
+      is String -> editor.putString(id, data)
+      is Double -> editor.putLong(id, java.lang.Double.doubleToRawLongBits(data))
+      is Int -> editor.putInt(id, data)
+      is Long -> editor.putLong(id, data)
+      else -> return false
+    }
+    editor.putBoolean("$doubleLongPrefix$id", data is Double)
+    return true
   }
 
   /**

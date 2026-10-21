@@ -49,6 +49,27 @@ class HomeWidget {
     return _channel.invokeMethod<bool>('saveWidgetData', arguments);
   }
 
+  /// Saves every entry of [data] to the Widget Storage in a single write
+  ///
+  /// A `null` value removes its key. Unlike [saveWidgetData], files created by
+  /// [renderFlutterWidget] are not deleted when their key is cleared.
+  ///
+  /// On Android the values are applied asynchronously: they are visible to
+  /// Widgets right away while the disk write happens in the background,
+  /// instead of one blocking write per key.
+  ///
+  /// Returns whether the data was saved or not
+  static Future<bool?> saveWidgetDataBatch(
+    Map<String, Object?> data, {
+    String? appGroupId,
+  }) {
+    final arguments = <String, dynamic>{
+      'data': data,
+      if (appGroupId != null) 'appGroupId': appGroupId,
+    };
+    return _channel.invokeMethod<bool>('saveWidgetDataBatch', arguments);
+  }
+
   /// Updates the HomeScreen Widget
   ///
   /// Android Widgets will look for [qualifiedAndroidName] then [androidName] and then for [name]
